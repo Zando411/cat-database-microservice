@@ -28,20 +28,64 @@ connectToDB();
 const db = client.db('CatsDB');
 const collection = db.collection('cats');
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getCoordinates(city, state) {
+  await wait(1000); // rate limit the geocoding API
+
+  try {
+    const response = await axios.get(
+      'https://nominatim.openstreetmap.org/search',
+      {
+        params: { q: `${city}, ${state}`, format: 'json', limit: 1 },
+        headers: { 'User-Agent': 'CatCall' },
+      }
+    );
+
+    if (response.data.length > 0) {
+      const location = response.data[0];
+      return {
+        latitude: parseFloat(location.lat),
+        longitude: parseFloat(location.lon),
+      };
+    } else {
+      throw new Error('Location not found');
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error.message);
+    return null; // Handle missing location gracefully
+  }
+}
+
 // endpoints
 app.post('/api/uploadCat', async (req, res) => {
-  const { name, age, color, owner } = req.body.cat;
+  const { name, age, sex, breed, color, owner, city, state } = req.body.cat;
 
-  if (!name || !age || !color || !owner) {
+  if (!name || !age || !sex || !breed || !color || !owner || !city || !state) {
     return res.status(400).json({ error: 'Missing cat data' });
+  }
+
+  const coordinates = await getCoordinates(city, state);
+  if (!coordinates) {
+    return res.status(400).json({ error: 'Invalid location' });
   }
 
   const catData = {
     _id: uuidv4(),
     name,
     age,
+    sex,
+    breed,
     color,
     owner,
+    city,
+    state,
+    location: {
+      type: 'Point',
+      coordinates: [coordinates.longitude, coordinates.latitude], // [lon, lat]
+    },
   };
 
   try {
