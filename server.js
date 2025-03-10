@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { MongoClient } = require('mongodb');
+const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -95,6 +96,51 @@ app.post('/api/uploadCat', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error uploading cat' });
+  }
+});
+
+// GET /api/cats that supports query parameters
+app.get('/api/cats', async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.owner) {
+      query.owner = req.query.owner;
+      const cats = await db.collection('cats').find(query).toArray();
+      res.json(cats);
+      return;
+    }
+    if (req.query.color) {
+      query.color = req.query.color;
+    }
+    if (req.query.age) {
+      query.age = parseInt(req.query.age);
+    }
+    if (req.query.sex) {
+      query.sex = req.query.sex;
+    }
+    if (req.query.breed) {
+      query.breed = req.query.breed;
+    }
+    if (req.query.lat && req.query.lon && req.query.radius) {
+      const latitude = parseFloat(req.query.lat);
+      const longitude = parseFloat(req.query.lon);
+      const radiusInMeters = parseFloat(req.query.radius) * 1609.34;
+      query.location = {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: radiusInMeters,
+        },
+      };
+    }
+
+    // TODO: add pagination
+
+    const cats = await db.collection('cats').find(query).toArray();
+    res.json(cats);
+    console.log(cats);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error getting cat' });
   }
 });
 
