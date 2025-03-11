@@ -63,6 +63,29 @@ async function getCats() {
   }
 }
 
+async function getCat(id) {
+  try {
+    const response = await axios.get(`http://localhost:${PORT}/api/cats/${id}`);
+
+    console.log('Cat retrieved:', response.data);
+  } catch (error) {
+    console.error('Error during get:', error.response.data.error);
+  }
+}
+
+async function updateCat(id) {
+  try {
+    const response = await axios.put(
+      `http://localhost:${PORT}/api/cats/${id}`,
+      { color: 'black' }
+    );
+
+    console.log('Cat updated:', response.data);
+  } catch (error) {
+    console.error('Error during put:', error.response.data.error);
+  }
+}
+
 async function getCatsRadius(radius) {
   try {
     const response = await axios.get(
@@ -75,8 +98,26 @@ async function getCatsRadius(radius) {
   }
 }
 
+async function deleteCat(id) {
+  try {
+    const response = await axios.delete(
+      `http://localhost:${PORT}/api/cats/${id}`
+    );
+
+    console.log('Cat deleted:', response.data);
+  } catch (error) {
+    console.error('Error during delete:', error.response.data.error);
+  }
+}
+
 // cats.forEach((cat) => uploadCat(cat));
 
 // getCatsRadius(50);
 
 // getCats();
+
+// getCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
+
+// updateCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
+
+deleteCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
