@@ -134,10 +134,12 @@ app.get('/api/cats', async (req, res) => {
     }
 
     // TODO: add pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    const cats = await db.collection('cats').find(query).toArray();
-    res.json(cats);
-    console.log(cats);
+    const cats = await collection.find(query).skip(skip).limit(limit).toArray();
+    res.json({ cats, page, limit });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error getting cat' });
@@ -150,11 +152,16 @@ app.get('/api/cats/:id', async (req, res) => {
     const query = { _id: req.params.id };
 
     const cat = await db.collection('cats').findOne(query);
+
+    if (!cat) {
+      return res.status(404).json({ error: 'Cat not found' });
+    }
+
     res.json(cat);
     console.log(cat);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: `Error getting cat ${_id}` });
+    res.status(500).json({ error: `Error getting cat` });
   }
 });
 
