@@ -144,6 +144,54 @@ app.get('/api/cats', async (req, res) => {
   }
 });
 
+// GET /api/cats/:id to retrieve a single cat by ID
+app.get('/api/cats/:id', async (req, res) => {
+  try {
+    const query = { _id: req.params.id };
+
+    const cat = await db.collection('cats').findOne(query);
+    res.json(cat);
+    console.log(cat);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: `Error getting cat ${_id}` });
+  }
+});
+
+// Update an existing cat profile
+app.put('/api/cats/:id', async (req, res) => {
+  try {
+    const updatedCat = await db
+      .collection('cats')
+      .findOneAndUpdate(
+        { _id: req.params.id },
+        { $set: req.body },
+        { returnDocument: 'after' }
+      );
+    if (!updatedCat) {
+      return res.status(404).json({ error: 'Cat not found' });
+    }
+    res.json({ message: 'Cat updated', updatedCat: updatedCat });
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating cat' });
+  }
+});
+
+// Delete a cat profile
+app.delete('/api/cats/:id', async (req, res) => {
+  try {
+    const deletedCat = await db
+      .collection('cats')
+      .findOneAndDelete({ _id: req.params.id });
+    if (!deletedCat) {
+      return res.status(404).json({ error: 'Cat not found' });
+    }
+    res.json({ message: 'Cat deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting cat' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
 });
