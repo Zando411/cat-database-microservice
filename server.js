@@ -3,6 +3,9 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const cors = require('cors');
@@ -12,7 +15,29 @@ const MONGO_URI = process.env.MONGO_URI;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// set up local storage for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const owner = req.body.owner;
+    if (!owner) {
+      return cb(new Error('Owner ID is required'));
+    }
+
+    const uploadPath = path.join(__dirname, 'uploads', owner);
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    req.catUUID = uuidv4();
+    cb(null, req.catUUID + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+// connect to MongoDB
 const client = new MongoClient(MONGO_URI);
 
 async function connectToDB() {
@@ -29,10 +54,12 @@ connectToDB();
 const db = client.db('CatsDB');
 const collection = db.collection('cats');
 
+// helper function to rate limit geocoding API
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// helper function to get coordinates from city and state
 async function getCoordinates(city, state) {
   await wait(1000); // rate limit the geocoding API
 
@@ -61,43 +88,71 @@ async function getCoordinates(city, state) {
 }
 
 // endpoints
-app.post('/api/uploadCat', async (req, res) => {
-  const { name, age, sex, breed, color, owner, city, state } = req.body.cat;
+app.post(
+  '/api/uploadCat',
+  upload.fields([{ name: 'image', maxCount: 1 }]),
+  async (req, res) => {
+    const { name, age, sex, breed, color, owner, city, state } = req.body;
+    console.log('Cat storage request: ', req.body);
 
-  if (!name || !age || !sex || !breed || !color || !owner || !city || !state) {
-    return res.status(400).json({ error: 'Missing cat data' });
+    if (
+      !name ||
+      !age ||
+      !sex ||
+      !breed ||
+      !color ||
+      !owner ||
+      !city ||
+      !state
+    ) {
+      return res.status(400).json({ error: 'Missing cat data' });
+    }
+
+    if (!req.files.image) {
+      console.log(req.files.image);
+      return res.status(400).json({ error: 'Image is required' });
+    }
+
+    const coordinates = await getCoordinates(city, state);
+    if (!coordinates) {
+      return res.status(400).json({ error: 'Invalid location' });
+    }
+
+    const catUUID = req.catUUID;
+    const imagePath = path.join(
+      __dirname,
+      'uploads',
+      owner,
+      catUUID + path.extname(req.files.image[0].originalname)
+    );
+
+    const catData = {
+      _id: catUUID,
+      name,
+      age,
+      sex,
+      breed,
+      color,
+      owner,
+      city,
+      state,
+      imagePath,
+      location: {
+        type: 'Point',
+        coordinates: [coordinates.longitude, coordinates.latitude], // [lon, lat]
+      },
+    };
+
+    try {
+      const result = await collection.insertOne(catData);
+      console.log(result);
+      res.json({ message: 'Cat uploaded' });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Error uploading cat' });
+    }
   }
-
-  const coordinates = await getCoordinates(city, state);
-  if (!coordinates) {
-    return res.status(400).json({ error: 'Invalid location' });
-  }
-
-  const catData = {
-    _id: uuidv4(),
-    name,
-    age,
-    sex,
-    breed,
-    color,
-    owner,
-    city,
-    state,
-    location: {
-      type: 'Point',
-      coordinates: [coordinates.longitude, coordinates.latitude], // [lon, lat]
-    },
-  };
-
-  try {
-    const result = await collection.insertOne(catData);
-    console.log(result);
-    res.json({ message: 'Cat uploaded' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Error uploading cat' });
-  }
-});
+);
 
 // GET /api/cats that supports query parameters
 app.get('/api/cats', async (req, res) => {
@@ -167,6 +222,17 @@ app.get('/api/cats/:id', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: `Error getting cat` });
+  }
+});
+
+app.get('/api/catImage/:owner/:catID', async (req, res) => {
+  const { owner, catID } = req.params;
+  const imagePath = path.join(__dirname, 'uploads', owner, catID);
+
+  if (fs.existsSync(imagePath)) {
+    res.sendFile(imagePath);
+  } else {
+    res.status(404).json({ error: 'Image not found' });
   }
 });
 
