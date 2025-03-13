@@ -129,7 +129,7 @@ app.post(
     const catData = {
       _id: catUUID,
       name,
-      age,
+      age: parseInt(age),
       sex,
       breed,
       color,
@@ -198,6 +198,7 @@ app.get('/api/cats', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    console.log('Query:', query);
     const cats = await collection.find(query).skip(skip).limit(limit).toArray();
     res.json({ cats, page, limit });
   } catch (e) {
@@ -227,9 +228,20 @@ app.get('/api/cats/:id', async (req, res) => {
 
 app.get('/api/catImage/:owner/:catID', async (req, res) => {
   const { owner, catID } = req.params;
-  const imagePath = path.join(__dirname, 'uploads', owner, catID);
+  const uploadsDir = path.join(__dirname, 'uploads', owner);
 
-  if (fs.existsSync(imagePath)) {
+  const possibleExtensions = ['.jpg', '.jpeg', '.png'];
+
+  let imagePath = null;
+  for (const ext of possibleExtensions) {
+    const filePath = path.join(uploadsDir, catID + ext);
+    if (fs.existsSync(filePath)) {
+      imagePath = filePath;
+      break;
+    }
+  }
+
+  if (imagePath) {
     res.sendFile(imagePath);
   } else {
     res.status(404).json({ error: 'Image not found' });
