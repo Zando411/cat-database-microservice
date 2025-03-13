@@ -112,8 +112,14 @@ app.get('/api/cats', async (req, res) => {
     if (req.query.color) {
       query.color = req.query.color;
     }
-    if (req.query.age) {
-      query.age = parseInt(req.query.age);
+    if (req.query.minAge || req.query.maxAge) {
+      query.age = {};
+      if (req.query.minAge) {
+        query.age.$gte = parseInt(req.query.minAge);
+      }
+      if (req.query.maxAge) {
+        query.age.$lte = parseInt(req.query.maxAge);
+      }
     }
     if (req.query.sex) {
       query.sex = req.query.sex;

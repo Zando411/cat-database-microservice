@@ -54,7 +54,7 @@ async function uploadCat(cat) {
 async function getCats() {
   try {
     const response = await axios.get(
-      `http://localhost:${PORT}/api/cats?color=black&age=6`
+      `http://localhost:${PORT}/api/cats?lat=44.5645659&lon=-123.2620435&radius=100&color=White&minAge=2&maxAge=5`
     );
 
     console.log('Cat retrieved:', response.data);
@@ -114,10 +114,10 @@ async function deleteCat(id) {
 
 // getCatsRadius(50);
 
-// getCats();
+getCats();
 
 // getCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
 
 // updateCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
 
-deleteCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
+// deleteCat('e77b210a-279c-4bbf-93c6-9eaab014d3e4');
