@@ -157,10 +157,12 @@ app.post(
 // GET /api/cats that supports query parameters
 app.get('/api/cats', async (req, res) => {
   try {
+    console.log('passed query:', req.query);
     const query = {};
     if (req.query.owner) {
       query.owner = req.query.owner;
       const cats = await db.collection('cats').find(query).toArray();
+      console.log('cats:', cats);
       res.json(cats);
       return;
     }
@@ -194,16 +196,19 @@ app.get('/api/cats', async (req, res) => {
       };
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    // pagination logic
+    // const page = parseInt(req.query.page) || 1;
+    // const limit = parseInt(req.query.limit) || 5;
+    // const skip = (page - 1) * limit;
 
-    console.log('Query:', query);
-    const cats = await collection.find(query).skip(skip).limit(limit).toArray();
-    res.json({ cats, page, limit });
+    console.log('built query:', query);
+    // pagination query
+    // const cats = await collection.find(query).skip(skip).limit(limit).toArray();
+    const cats = await collection.find({}).toArray();
+    res.json({ cats });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'Error getting cat' });
+    res.status(500).json({ error: 'Error getting cats' });
   }
 });
 
@@ -251,13 +256,16 @@ app.get('/api/catImage/:owner/:catID', async (req, res) => {
 // Update an existing cat profile
 app.put('/api/cats/:id', async (req, res) => {
   try {
-    const updatedCat = await db
-      .collection('cats')
-      .findOneAndUpdate(
-        { _id: req.params.id },
-        { $set: req.body },
-        { returnDocument: 'after' }
-      );
+    const { name, age, sex, breed, color } = req.body;
+
+    const updatedCat = await db.collection('cats').findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        $set: { name, age, sex, breed, color },
+      },
+      { returnDocument: 'after' }
+    );
+    console.log('updatedCat:', updatedCat);
     if (!updatedCat) {
       return res.status(404).json({ error: 'Cat not found' });
     }
@@ -273,6 +281,8 @@ app.delete('/api/cats/:id', async (req, res) => {
     const deletedCat = await db
       .collection('cats')
       .findOneAndDelete({ _id: req.params.id });
+
+    console.log('deletedCat:', deletedCat);
     if (!deletedCat) {
       return res.status(404).json({ error: 'Cat not found' });
     }
