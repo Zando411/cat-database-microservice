@@ -196,15 +196,9 @@ app.get('/api/cats', async (req, res) => {
       };
     }
 
-    // pagination logic
-    // const page = parseInt(req.query.page) || 1;
-    // const limit = parseInt(req.query.limit) || 5;
-    // const skip = (page - 1) * limit;
-
     console.log('built query:', query);
-    // pagination query
-    // const cats = await collection.find(query).skip(skip).limit(limit).toArray();
-    const cats = await collection.find({}).toArray();
+    const cats = await collection.find(query).toArray();
+    console.log('cats:', cats);
     res.json({ cats });
   } catch (e) {
     console.error(e);
